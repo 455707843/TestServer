@@ -23,11 +23,11 @@ ClientSocket::~ClientSocket()
 
 bool ClientSocket::Send(const std::string& message)
 {
-    return Socket::Send(static_cast<Socket&>(*this), message);
+    return Socket::Send(GetSockfd(), message);
 }
 
 
 int ClientSocket::Receive(std::string& message)
 {
-    return Socket::Receive(static_cast<Socket&>(*this), message);
+    return Socket::Receive(GetSockfd(), message);
 }

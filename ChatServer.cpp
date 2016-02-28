@@ -11,11 +11,7 @@ int main()
     try
     {
         ServerSocket server(8080);
-
-        while (true)
-        {
-            server.Accept();
-        }
+        server.Run();
     }
     catch(SocketException& ex)
     {

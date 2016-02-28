@@ -8,27 +8,28 @@ using namespace std;
 int main()
 {
     cout << "Running ChatClient..." << endl;
-    ClientSocket clientSocket("127.0.0.1", 8080);
-    string sendMessage;
+    string sMessage, rMessage;
 
-    while (true)
+    try
     {
-        try
+        for (int i = 1; i <= 1000; i++)
         {
-            string message;
-            clientSocket.Receive(message);
-            cout << "Response from server: " << message << endl;
-            cin >> sendMessage;
-            clientSocket.Send(sendMessage);
-            if ("exit" == sendMessage)
+            ClientSocket* client = new ClientSocket("127.0.0.1", 8080);
+            client->Receive(rMessage);
+            sMessage = "I am ";
+            int a = i;
+            while (a)
             {
-                break;
+                sMessage += a % 10 + '0';
+                a /= 10;
             }
+            client->Send(sMessage);
+            cout << rMessage << endl;
         }
-        catch(SocketException& ex)
-        {
-            cout << "Exception was caught:" << ex.Description() << endl;
-        }
+    }
+    catch(SocketException& ex)
+    {
+        cout << "Exception was caught:" << ex.Description() << endl;
     }
     return 0;
 }

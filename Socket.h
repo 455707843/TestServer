@@ -6,9 +6,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string>
+#include <unistd.h>
 
-const int MAXCONNECTION = 5;
-const int MAXRECEIVE = 500;
+const int MAXCONNECTION = 10000;
+const int MAXRECEIVE = 10000;
 
 class Socket
 {
@@ -23,16 +24,18 @@ class Socket
 
         bool Connect(const std::string& host, const int port);
         
-        static bool Send(Socket& socket, const std::string& message);
-        static int Receive(Socket& socket, std::string& message);
+        bool Send(int sockfd, const std::string& message);
+        int Receive(int sockfd, std::string& message);
 
-        unsigned int GetAddress();
+        char* GetAddress();
         int GetPort();
+	int GetSockfd();
         void SetNonBlocking(const bool flag);
         bool IsValid() const;
 
     private:
         int m_sockfd;
+        char ipAddress[20];
         struct sockaddr_in m_address;
 };
 

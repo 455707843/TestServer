@@ -4,8 +4,12 @@
 #include "Socket.h"
 #include <list>
 #include <stdio.h>
+#include <mysql.h>
+#include <sys/epoll.h>
 
 using std::list;
+
+#define EPOLL_SIZE 10000
 
 class ServerSocket:public Socket
 {
@@ -16,17 +20,15 @@ class ServerSocket:public Socket
         
         void Accept(Socket& socket);
         void Run();
-
-        bool Accept();
     private:
-        void AddClient(Socket* clientSocket);
-        static void DeleteClient(Socket* clientSocket);
-        static void* ProcessMessage(void* arg);
-        static void SendMessageToAllUsers(Socket* socket, const std::string& message);
+        void AddClient(int clientSockfd);
+        bool ProcessMessage(int clientSockfd);
+        void SendMessageToAllUsers(int clientSockfd, const std::string& message);
 
-        static list<Socket*> clientSockets;
-        static bool serviceFlag;
-        static Mysql m_Mysql;
+        list<int> clientSockfds;
+        struct epoll_event ev, events[EPOLL_SIZE];
+        MYSQL mysql;
+        char query[255];
 };
 
 #endif

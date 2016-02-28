@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-list <Socket*> ServerSocket::clientSockets;
-
 ServerSocket::ServerSocket(const int port)
 {
     if (!Socket::Create())
@@ -24,17 +22,22 @@ ServerSocket::ServerSocket(const int port)
     {
         throw SocketException("Could not listen to socket.");
     }
+    
+    mysql_init(&mysql);
+    if (!mysql_real_connect(&mysql, "localhost", "root", "root", "testdb", 0, NULL, 0))
+    {
+        printf("%s", mysql_error(&mysql));
+    }
+    else
+    {
+        printf("Conected to mysql!\n");
+    }
+    SetNonBlocking(true);
 }
 
 
 ServerSocket::~ServerSocket()
 {
-    list <Socket*>::iterator iter;
-
-    for (iter = clientSockets.begin(); iter != clientSockets.end(); iter++)
-    {
-        delete (*iter);
-    }
 }
 
 
@@ -46,112 +49,80 @@ void ServerSocket::Accept(Socket& socket)
     }
 }
 
-
-bool ServerSocket::Accept()
+void ServerSocket::Run()
 {
-    Socket* clientSocket = new Socket;
-    Accept(*clientSocket);
-    AddClient(clientSocket);
+    ev.events = EPOLLIN | EPOLLET;
+    int epfd;
+    int client, epoll_events_count;
+    epfd = epoll_create(EPOLL_SIZE);
+    ev.data.fd = GetSockfd();
+    epoll_ctl(epfd, EPOLL_CTL_ADD, GetSockfd(), &ev);
 
-    pthread_t newThread;
-    int result = pthread_create(&newThread, NULL, ProcessMessage, static_cast<void*>(clientSocket));
-    if (0 != result)
+    while (true)
     {
-        return false;
-    }
+        epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, -1);
 
-    result = pthread_detach(newThread);
-    if (0 != result)
+        for (int i = 0; i < epoll_events_count; i++)
+        {
+            if (events[i].data.fd == GetSockfd())
+            {
+                Socket* clientSock = new Socket;
+                Accept(*clientSock);
+                clientSock->SetNonBlocking(true);
+                ev.data.fd = clientSock->GetSockfd();
+                epoll_ctl(epfd, EPOLL_CTL_ADD, clientSock->GetSockfd(), &ev);
+                AddClient(clientSock->GetSockfd());
+                Send(clientSock->GetSockfd(), "Welcome!");
+            }
+            else
+            {
+                ProcessMessage(events[i].data.fd);
+            }
+        }
+    }
+}
+
+
+bool ServerSocket::ProcessMessage(int clientSockfd)
+{
+    std::string message;
+    Receive(clientSockfd, message);
+    time_t now;
+    struct tm *timenow;
+    time(&now);
+    timenow = localtime(&now);
+    sprintf(query, "insert into log(time, message) values('%s', '%s')", 
+                                         asctime(timenow), &message[0]);
+    if (0 == message.length())
     {
-        perror("Failed to detach thread");
+        close(clientSockfd);
+        clientSockfds.remove(clientSockfd);
     }
-
+    else
+    {
+        
+        int res = mysql_query(&mysql, query);
+        SendMessageToAllUsers(clientSockfd, message);
+    }
     return true;
 }
 
 
-void ServerSocket::Run()
+void ServerSocket::AddClient(int clientSockfd)
 {
-    while (serviceFlag)
+    clientSockfds.push_back(clientSockfd);
+
+    std::cout << "Now " << clientSockfds.size() << " users.." << std::endl;
+}
+
+void ServerSocket::SendMessageToAllUsers(int clientSockfd, const std::string& message)
+{
+    list <int>::iterator iter;
+    for (iter = clientSockfds.begin(); iter != clientSockfds.end(); iter++)
     {
-        if (clientSockets.size() >= static_cast<unsigned int>(MAXCONNECTION))
+        if ((*iter) != clientSockfd)
         {
-            serviceFlag = false;
-        }
-        else
-        {
-            serviceFlag = Accept();
-        }
-        sleep(1);
-    }
-}
-
-
-void* ServerSocket::ProcessMessage(void* arg)
-{
-    std::string message;
-    Socket* clientSocket = static_cast<Socket*>(arg);
-    Send(*clientSocket, "Welcome!");
-
-    while (serviceFlag)
-    {
-        Receive(*clientSocket, message);
-        std::string query = "insert into log(ipAddress, port, time, message) values(";
-        sprintf(query, "insert into log(ipAddress, port, time, message) values(%d, %d, %d, %s)", clientSocket->GetAddress(), clientSocket->GetPort(), time(0), message);
-        m_Mysql(query);
-        if ("exit" == message)
-        {
-            Send(*clientSocket, "user_exit");
-            DeleteClient(clientSocket);
-            break;
-        }
-        else
-        {
-            SendMessageToAllUsers(clientSocket, message);
-        }
-        sleep(1);
-    }
-    pthread_exit(NULL);
-    return NULL;
-}
-
-
-void ServerSocket::AddClient(Socket* socket)
-{
-        clientSockets.push_back(socket);
-
-        std::cout << "Now " << clientSockets.size() << " users.." << std::endl;
-        std::cout << "New User: " << socket->GetAddress() << " " << socket->GetPort() << std::endl;
-
-}
-
-
-void ServerSocket::DeleteClient(Socket* socket)
-{
-        list <Socket*>::iterator iter;
-        for (iter = clientSockets.begin(); iter != clientSockets.end(); iter++)
-        {
-            if ((*iter)->GetAddress() == socket->GetAddress() && (*iter)->GetPort() == socket->GetPort())
-            {
-                delete (*iter);
-                clientSockets.erase(iter);
-                std::cout << "Now " << clientSockets.size() << " users.. " << std::endl;
-                break;
-            }
-        }
-}
-
-
-void ServerSocket::SendMessageToAllUsers(Socket* socket, const std::string& message)
-{
-    list <Socket*>::iterator iter;
-    for (iter = clientSockets.begin(); iter != clientSockets.end(); iter++)
-    {
-        std::cout << (**iter).GetAddress() << " " << socket->GetAddress() << std::endl;
-        std::cout << (**iter).GetPort() << " " << socket->GetPort() << std::endl;
-        if ((*iter)->GetAddress() != socket->GetAddress() || (*iter)->GetPort() != socket->GetPort())
-        {
-            Send(**iter, message);
+            Send(*iter, message);
         }
     }
 }

@@ -3,7 +3,7 @@
 #include <memory.h>
 #include <iostream>
 #include <fcntl.h>
-
+#include <unistd.h>
 
 Socket::Socket() :m_sockfd(-1)
 {
@@ -99,9 +99,9 @@ bool Socket::Connect(const std::string& host, const int port)
 }
 
 
-bool Socket::Send(Socket& socket, const std::string& message)
+bool Socket::Send(int sockfd, const std::string& message)
 {
-    int result = ::send(socket.m_sockfd, message.c_str(), message.length(), MSG_NOSIGNAL);
+    int result = ::send(sockfd, message.c_str(), message.length(), MSG_NOSIGNAL);
     if (-1 == result)
     {
         return false;
@@ -110,13 +110,13 @@ bool Socket::Send(Socket& socket, const std::string& message)
 }
 
 
-int Socket::Receive(Socket& socket, std::string& message)
+int Socket::Receive(int sockfd, std::string& message)
 {
     char buffer[MAXRECEIVE + 1];
     message.clear();
     memset(buffer, 0, MAXRECEIVE + 1);
 
-    int numberRead = ::recv(socket.m_sockfd, buffer, MAXRECEIVE, 0);
+    int numberRead = ::recv(sockfd, buffer, MAXRECEIVE, 0);
     if (-1 == numberRead)
     {
         std::cout << "error in Socket::Receive\n";
@@ -169,7 +169,15 @@ int Socket::GetPort()
     return m_address.sin_port;
 }
 
-unsigned int Socket::GetAddress()
+char* Socket::GetAddress()
 {
-    return m_address.sin_addr.s_addr;
+    char* ipaddr = NULL;
+    ipaddr = inet_ntoa(m_address.sin_addr);
+    strcpy(ipAddress, ipaddr);
+    return ipAddress;
+}
+
+int Socket::GetSockfd()
+{
+    return m_sockfd;
 }
