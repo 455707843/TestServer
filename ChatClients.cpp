@@ -6,7 +6,10 @@
 
 using namespace std;
 
+#define TEST
+
 string sMessage, rMessage;
+string span = "@$#";
 ClientSocket* client;
 bool flag;
 
@@ -14,9 +17,12 @@ void* ProcessReceive(void* arg)
 {
     while (flag)
     {
-        client->Receive(rMessage);
-        cout << rMessage << endl;
+        while (client->Receive(rMessage))
+        {
+            cout << rMessage << endl;
+        }
     }
+    pthread_exit(NULL);
 }
 
 void showTime()
@@ -43,6 +49,28 @@ int main()
             return 0;
         }
         showTime();
+#ifdef TEST
+        for (int i = 1; i <= 1000000; i++)
+        {
+            sMessage = "";
+            int a = i;
+            while (a)
+            {
+                sMessage += (char)(a % 10 + '0');
+                a /= 10;
+            }
+            if ("exit" == sMessage)
+            {
+                flag = false;
+                delete client;
+                break;
+            }
+            cout << sMessage << endl;
+            sMessage += span;
+            client->Send(sMessage);
+            showTime();
+        }
+#endif
         while (getline(cin, sMessage))
         {
             if ("exit" == sMessage)
@@ -51,9 +79,11 @@ int main()
                 delete client;
                 break;
             }
+            sMessage += span;
             client->Send(sMessage);
             showTime();
         }
+        close(client->GetSockfd());
     }
     catch(SocketException& ex)
     {

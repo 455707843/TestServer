@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 const int MAXCONNECTION = 10000;
-const int MAXRECEIVE = 10000;
+const int MAXRECEIVE = 1024;
 
 class Socket
 {

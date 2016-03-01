@@ -119,7 +119,6 @@ int Socket::Receive(int sockfd, std::string& message)
     int numberRead = ::recv(sockfd, buffer, MAXRECEIVE, 0);
     if (-1 == numberRead)
     {
-        std::cout << "error in Socket::Receive\n";
         return 0;
     }
     else if (0 == numberRead)

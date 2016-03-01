@@ -12,7 +12,7 @@ int main()
 
     try
     {
-        for (int i = 1; i <= 1000; i++)
+        for (int i = 1; i <= 10000; i++)
         {
             ClientSocket* client = new ClientSocket("127.0.0.1", 8080);
             client->Receive(rMessage);
