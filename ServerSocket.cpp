@@ -28,15 +28,6 @@ ServerSocket::ServerSocket(const int port)
         throw SocketException("Could not listen to socket.");
     }
     
-    /*mysql_init(&mysql);
-    if (!mysql_real_connect(&mysql, "localhost", "root", "root", "testdb", 0, NULL, 0))
-    {
-        printf("%s", mysql_error(&mysql));
-    }
-    else
-    {
-        printf("Conected to mysql!\n");
-    }*/
     flag = true;
     SetNonBlocking(true);
 }
@@ -59,14 +50,17 @@ void ServerSocket::Accept(Socket& socket)
 
 void ServerSocket::Run()
 {
-    ev.events = EPOLLIN | EPOLLET;
     int epfd;
     int client, epoll_events_count;
+
+    ev.events = EPOLLIN | EPOLLET;
     epfd = epoll_create(EPOLL_SIZE);
     ev.data.fd = GetSockfd();
     epoll_ctl(epfd, EPOLL_CTL_ADD, GetSockfd(), &ev);
     pthread_t newThread;
+
     int result = pthread_create(&newThread, NULL, ProcessInsert, NULL);
+
     while (true)
     {
         epoll_events_count = epoll_wait(epfd, events, EPOLL_SIZE, -1);
@@ -120,26 +114,24 @@ bool ServerSocket::ProcessMessage(int clientSockfd)
     	        timenow = localtime(&now);
     	        sprintf(query[clientSockfd], "insert into log(ipAddress, port, time, message) values('%s', '%d', '%s', '%s');", 
                                          users[clientSockfd].ipAddress, users[clientSockfd].port, asctime(timenow), &message[0]);
+
     	        messageStore[clientSockfd].push(query[clientSockfd]);
     	        if (0 == message.length())
     	        {
         	        std::cout << asctime(timenow) << "IP:" << users[clientSockfd].ipAddress << " Port:" << users[clientSockfd].port << std::endl;
-		            std::cout << "quit" << std::endl;
+		        std::cout << "quit" << std::endl;
         	        close(clientSockfd);
         	        clientSockfds.remove(clientSockfd);
     	        }
     	        else
     	        {
-        	        /*int res = mysql_query(&mysql, query[clientSockfd]);
-        	        if (0 != res)
-        	        {
-           	            std::cout << "Insert failed!" << std::endl;
-        	        }*/
-
         	        std::cout << asctime(timenow) << "IP:" << users[clientSockfd].ipAddress << " Port:" << users[clientSockfd].port << std::endl;
         	        std::cout << message << std::endl;
-        	        sprintf(sendStr[clientSockfd], "%sIP:%s Port:%d\n%s\n", asctime(timenow), users[clientSockfd].ipAddress, users[clientSockfd].port, &message[0]);
+        	        sprintf(sendStr[clientSockfd], "%sIP:%s Port:%d\n%s\n", asctime(timenow), 
+			        users[clientSockfd].ipAddress, users[clientSockfd].port, &message[0]);
+
         	        int len = strlen(sendStr[clientSockfd]);
+
         	        for (int i = 0; i < len; i++)
         	        {
             		    smessage += sendStr[clientSockfd][i];
@@ -157,14 +149,16 @@ bool ServerSocket::ProcessMessage(int clientSockfd)
 void* ServerSocket::ProcessInsert(void* arg)
 {
     mysql_init(&mysql);
+
     if (!mysql_real_connect(&mysql, "localhost", "root", "root", "testdb", 0, NULL, 0))
     {
-        printf("%s", mysql_error(&mysql));
+        std::cout << mysql_error(&mysql) << std::endl;
     }
     else
     {
-        printf("Conected to mysql!\n");
+        std::cout << "Conected to mysql!" << std::endl;
     }
+
     while (flag)
     {
         for (int i = 0; i < FD_SIZE; i++)
@@ -173,7 +167,7 @@ void* ServerSocket::ProcessInsert(void* arg)
             {
                 char* cur = messageStore[i].front();
                 int res = mysql_query(&mysql, cur);
-                //std::cout << "lihe" << cur << std::endl;
+
                 if (0 != res)
                 {
                     std::cout << "Insert failed!" << std::endl;

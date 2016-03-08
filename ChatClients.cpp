@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define TEST
+//#define TEST
 
 string sMessage, rMessage;
 string span = "@$#";
@@ -48,7 +48,9 @@ int main()
         {
             return 0;
         }
+
         showTime();
+
 #ifdef TEST
         for (int i = 1; i <= 1000000; i++)
         {
@@ -71,6 +73,7 @@ int main()
             showTime();
         }
 #endif
+
         while (getline(cin, sMessage))
         {
             if ("exit" == sMessage)

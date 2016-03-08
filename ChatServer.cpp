@@ -8,6 +8,7 @@ using namespace std;
 int main()
 {
     cout << "Running ChatServer..." << endl;
+
     try
     {
         ServerSocket server(8080);
@@ -15,7 +16,9 @@ int main()
     }
     catch(SocketException& ex)
     {
-        cout << "Exception was caught:" << ex.Description() << "\nExiting.\n";
+        cout << "Exception was caught:" << ex.Description() << endl;
+        cout << "Exiting." << endl;
     }
+
     return 0;
 }
